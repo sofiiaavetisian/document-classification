@@ -1,0 +1,17 @@
+project_name: document_classification_project
+random_seed: 42
+classes:
+  - invoice
+  - form
+  - resume
+  - email
+  - budget
+splits:
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  preserve_official_split_if_present: true
+subset_copy_mode: symlink  # copy | symlink
+kaggle:
+  dataset_slug: pdavpoojan/the-rvlcdip-dataset-test
+  unzip: true

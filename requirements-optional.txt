@@ -1,0 +1,6 @@
+# Optional acceleration / quality packages
+rapidfuzz>=3.0
+wordfreq>=3.0
+xgboost>=1.7
+lightgbm>=4.0
+imbalanced-learn>=0.11

@@ -1,0 +1,27 @@
+{
+  "n_all_images": 39997,
+  "n_selected_images": 12540,
+  "selected_classes": [
+    "invoice",
+    "form",
+    "resume",
+    "email",
+    "budget"
+  ],
+  "split_counts": {
+    "train": 8777,
+    "val": 1882,
+    "test": 1881
+  },
+  "class_counts": {
+    "resume": 2536,
+    "email": 2516,
+    "form": 2506,
+    "budget": 2505,
+    "invoice": 2477
+  },
+  "duplicate_report": {
+    "hash_duplicates": 2,
+    "relative_path_duplicates": 0
+  }
+}

@@ -2,8 +2,24 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .venv/
+
+# Generated datasets and artifacts (local-only)
 data/raw/
+data/interim/
+data/processed/
 models/
 outputs/
 reports/figures/
 reports/tables/
+
+# OCR cache + logs
+data/interim/ocr/
+
+# Common binary artifacts
+*.joblib
+*.pkl
+*.pickle
+*.parquet
+*.feather
+*.h5
+*.hdf5

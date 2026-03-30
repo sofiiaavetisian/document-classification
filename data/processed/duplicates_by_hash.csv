@@ -1,3 +1,0 @@
-doc_id,file_path,relative_path,class_name,split_original,source_folder,file_ext,width,height,read_error,hash_md5,split
-doc_00000231,/Users/sofiiaavetisian/Desktop/UNI/statistical_learning/FINAL_PROJECT/document-classification/document_classification_project/data/raw/kaggle_extracted/test/form/2058054411.tif,test/form/2058054411.tif,form,test,test/form,.tif,751.0,1000.0,,2b567b93f3ceeb467260959172bea0e1,train
-doc_00001706,/Users/sofiiaavetisian/Desktop/UNI/statistical_learning/FINAL_PROJECT/document-classification/document_classification_project/data/raw/kaggle_extracted/test/form/2053375383.tif,test/form/2053375383.tif,form,test,test/form,.tif,751.0,1000.0,,2b567b93f3ceeb467260959172bea0e1,train

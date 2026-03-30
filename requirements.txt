@@ -12,6 +12,8 @@ matplotlib>=3.7
 opencv-python>=4.8
 pillow>=10.0
 pytesseract>=0.3.10
+# NOTE: install OCR binary separately (not via pip):
+# macOS: brew install tesseract
 
 # NLP / text utils
 regex>=2023.10
@@ -21,3 +23,7 @@ python-dateutil>=2.8.2
 pyyaml>=6.0
 tqdm>=4.66
 kaggle>=1.6
+
+# Notebook runtime
+ipykernel>=6.29
+notebook>=7.2

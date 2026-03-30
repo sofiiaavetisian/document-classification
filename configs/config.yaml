@@ -15,3 +15,20 @@ subset_copy_mode: symlink  # copy | symlink
 kaggle:
   dataset_slug: pdavpoojan/the-rvlcdip-dataset-test
   unzip: true
+
+ocr:
+  tesseract_cmd: null
+  lang: eng
+  psm: 6
+  oem: 3
+  extra_config: ""
+  preprocess_mode: adaptive
+  enable_grayscale: true
+  enable_denoise: true
+  enable_deskew: false
+  min_confidence: 0.0
+  resize_max_dim: 1800
+  cache_dir: data/interim/ocr
+  diagnostics_dir: outputs/ocr_diagnostics
+  diagnostics_enabled: true
+  failure_log_path: data/interim/ocr/logs/ocr_failures.jsonl

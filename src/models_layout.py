@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from itertools import product
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import joblib
@@ -26,6 +27,13 @@ class TextVectorizerConfig:
     max_features_char: int = 120000
 
 
+CONFUSION_ANCHORS = {
+    "invoice": ["invoice", "bill to", "amount due", "subtotal", "tax", "balance due"],
+    "form": ["application", "signature", "name", "address", "checkbox", "date:"],
+    "budget": ["budget", "forecast", "planned", "allocated", "variance", "cost center"],
+}
+
+
 def clean_ocr_text(text: str) -> str:
     if text is None:
         return ""
@@ -33,6 +41,28 @@ def clean_ocr_text(text: str) -> str:
     # Preserve currency/date symbols but normalize whitespace.
     t = " ".join(t.split())
     return t
+
+
+def _count_anchor_occurrences(text: str, anchors: Sequence[str]) -> int:
+    t = text.lower()
+    count = 0
+    for a in anchors:
+        count += t.count(a)
+    return count
+
+
+def augment_text_for_confusion_pairs(text: str) -> str:
+    """Add synthetic anchor tokens to emphasize hard confusion pairs.
+
+    This is label-free and uses only OCR text content.
+    """
+    t = clean_ocr_text(text)
+    parts = [t]
+    for cls, anchors in CONFUSION_ANCHORS.items():
+        n = _count_anchor_occurrences(t, anchors)
+        if n > 0:
+            parts.extend([f"anchor_{cls}"] * min(n, 20))
+    return " ".join(parts)
 
 
 def fit_text_vectorizers(
@@ -59,7 +89,7 @@ def fit_text_vectorizers(
         sublinear_tf=True,
     )
 
-    train_clean = [clean_ocr_text(t) for t in train_texts]
+    train_clean = [augment_text_for_confusion_pairs(t) for t in train_texts]
     word_vectorizer.fit(train_clean)
     char_vectorizer.fit(train_clean)
     return word_vectorizer, char_vectorizer
@@ -70,7 +100,7 @@ def transform_text_features(
     word_vectorizer: TfidfVectorizer,
     char_vectorizer: TfidfVectorizer,
 ) -> sparse.csr_matrix:
-    clean = [clean_ocr_text(t) for t in texts]
+    clean = [augment_text_for_confusion_pairs(t) for t in texts]
     xw = word_vectorizer.transform(clean)
     xc = char_vectorizer.transform(clean)
     return sparse.hstack([xw, xc], format="csr")
@@ -145,6 +175,106 @@ def fit_text_only_model(X_text_train: sparse.csr_matrix, y_train: Sequence[str],
     )
     model.fit(X_text_train, y_train)
     return model
+
+
+def tune_text_only_model_on_validation(
+    train_texts: Sequence[str],
+    y_train: Sequence[str],
+    val_texts: Sequence[str],
+    y_val: Sequence[str],
+    labels: Sequence[str],
+    random_state: int = 42,
+) -> Dict[str, object]:
+    """Run deeper TF-IDF + LogisticRegression tuning on train/val only."""
+    from .evaluation import compute_metrics
+
+    search_space = {
+        "word_ngram_range": [(1, 2), (1, 3)],
+        "char_ngram_range": [(3, 5), (3, 6)],
+        "min_df_word": [1, 2, 3],
+        "min_df_char": [1, 2, 3],
+        "max_features_word": [60000, 90000],
+        "max_features_char": [120000, 180000],
+        "C": [0.5, 1.0, 2.0, 4.0],
+    }
+
+    best = {
+        "macro_f1": -1.0,
+        "config": None,
+        "model": None,
+        "word_vectorizer": None,
+        "char_vectorizer": None,
+        "val_pred": None,
+        "val_proba": None,
+        "metrics": None,
+    }
+
+    combos = product(
+        search_space["word_ngram_range"],
+        search_space["char_ngram_range"],
+        search_space["min_df_word"],
+        search_space["min_df_char"],
+        search_space["max_features_word"],
+        search_space["max_features_char"],
+        search_space["C"],
+    )
+
+    for combo in combos:
+        (word_ng, char_ng, min_w, min_c, max_w, max_c, C) = combo
+        txt_cfg = TextVectorizerConfig(
+            word_ngram_range=word_ng,
+            char_ngram_range=char_ng,
+            min_df_word=min_w,
+            min_df_char=min_c,
+            max_features_word=max_w,
+            max_features_char=max_c,
+        )
+
+        try:
+            wv, cv = fit_text_vectorizers(train_texts, cfg=txt_cfg)
+            Xt = transform_text_features(train_texts, wv, cv)
+            Xv = transform_text_features(val_texts, wv, cv)
+
+            model = LogisticRegression(
+                max_iter=3500,
+                solver="saga",
+                n_jobs=-1,
+                random_state=random_state,
+                C=C,
+            )
+            model.fit(Xt, y_train)
+            y_val_pred, y_val_proba = predict_labels_and_proba(model, Xv)
+            metrics = compute_metrics(y_val, y_val_pred, labels)
+
+            if metrics["macro_f1"] > best["macro_f1"]:
+                best.update(
+                    {
+                        "macro_f1": metrics["macro_f1"],
+                        "config": {
+                            "word_ngram_range": word_ng,
+                            "char_ngram_range": char_ng,
+                            "min_df_word": min_w,
+                            "min_df_char": min_c,
+                            "max_features_word": max_w,
+                            "max_features_char": max_c,
+                            "C": C,
+                        },
+                        "model": model,
+                        "word_vectorizer": wv,
+                        "char_vectorizer": cv,
+                        "val_pred": y_val_pred,
+                        "val_proba": y_val_proba,
+                        "metrics": metrics,
+                    }
+                )
+        except Exception:
+            # Skip unstable configurations (rare when vocabulary gets too sparse).
+            continue
+
+    if best["model"] is None:
+        raise RuntimeError("Text-only tuning failed for all configurations.")
+
+    return best
 
 
 def fit_layout_only_model(X_layout_train: np.ndarray, y_train: Sequence[str], random_state: int = 42):

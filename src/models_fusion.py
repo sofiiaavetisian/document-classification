@@ -286,9 +286,10 @@ def fit_stacking_meta_classifier(
     X_meta = _stack_meta_features(val_probabilities)
     le = LabelEncoder()
     y_enc = le.fit_transform(list(y_val))
+    # Keep constructor compatible across sklearn versions where `multi_class`
+    # may be removed/deprecated from the public signature.
     clf = LogisticRegression(
         max_iter=3000,
-        multi_class="auto",
         solver="lbfgs",
         n_jobs=-1,
         random_state=random_state,

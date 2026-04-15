@@ -39,6 +39,24 @@ __all__ = [
     "zone_summary",
     "extract_invoice_fields",
     "extract_batch",
+    "VisualFeatureConfig",
+    "build_visual_feature_table",
+    "extract_visual_feature_vector",
+    "TextBranchConfig",
+    "fit_text_vectorizers",
+    "transform_text_features",
+    "fit_calibrated_linear_svm",
+    "fit_logistic_text_classifier",
+    "fit_layout_preprocessor",
+    "transform_dense_features",
+    "get_tree_classifier",
+    "predict_proba_robust",
+    "weighted_average_fusion",
+    "optimize_fusion_weights",
+    "fit_stacking_meta_classifier",
+    "stacking_predict_proba",
+    "prediction_table",
+    "top_k_errors",
 ]
 
 
@@ -58,3 +76,21 @@ from .invoice_rules import (
 )
 from .zones import detect_zones, PageZones, zone_summary
 from .invoice_extraction import extract_invoice_fields, extract_batch
+from .visual_features import VisualFeatureConfig, build_visual_feature_table, extract_visual_feature_vector
+from .models_fusion import (
+    TextBranchConfig,
+    fit_text_vectorizers,
+    transform_text_features,
+    fit_calibrated_linear_svm,
+    fit_logistic_text_classifier,
+    fit_layout_preprocessor,
+    transform_dense_features,
+    get_tree_classifier,
+    predict_proba_robust,
+    weighted_average_fusion,
+    optimize_fusion_weights,
+    fit_stacking_meta_classifier,
+    stacking_predict_proba,
+    prediction_table,
+    top_k_errors,
+)

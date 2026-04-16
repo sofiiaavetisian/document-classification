@@ -65,7 +65,7 @@ const particles = [
 function HeroVisual() {
   return (
     <div className="hero-visual reveal-hero delay-2" aria-hidden="true">
-      <svg viewBox="0 0 760 420" role="presentation">
+      <svg viewBox="0 0 920 420" role="presentation">
         <defs>
           <linearGradient id="docStroke" x1="156" y1="78" x2="402" y2="334">
             <stop offset="0%" stopColor="#c0d0ca" stopOpacity="0.92" />
@@ -87,7 +87,7 @@ function HeroVisual() {
           </radialGradient>
         </defs>
 
-        <ellipse cx="452" cy="210" rx="208" ry="172" fill="url(#particleGlow)" />
+        <ellipse cx="350" cy="210" rx="258" ry="178" fill="url(#particleGlow)" />
 
         <g className="document-shape">
           <rect x="156" y="80" width="258" height="260" rx="24" fill="url(#docFill)" stroke="url(#docStroke)" strokeWidth="1.5" />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAppState } from '../context/useAppState'
@@ -14,9 +14,37 @@ function UploadPage() {
   const { history, createClassificationJob } = useAppState()
   const [files, setFiles] = useState([])
   const [dragActive, setDragActive] = useState(false)
+  const [isClassifying, setIsClassifying] = useState(false)
+  const [loadingPhraseIndex, setLoadingPhraseIndex] = useState(0)
+  const [expandedClass, setExpandedClass] = useState('')
+
+  const loadingPhrases = [
+    'Preparing document stream...',
+    'Classifying pages...',
+    'Extracting invoice information...',
+    'Validating field consistency...',
+    'Finalizing analysis output...',
+  ]
 
   const canClassify = files.length > 0
-  const recentJobs = useMemo(() => history.slice(0, 4), [history])
+  const classGroups = useMemo(() => {
+    const labels = ['invoice', 'form', 'resume', 'email', 'budget']
+    const grouped = Object.fromEntries(labels.map((label) => [label, []]))
+
+    history.forEach((job) => {
+      job.pages.forEach((page) => {
+        const label = (page.label || '').toLowerCase()
+        if (grouped[label]) {
+          grouped[label].push(page.fileName)
+        }
+      })
+    })
+
+    labels.forEach((label) => {
+      grouped[label] = grouped[label].slice(0, 6)
+    })
+    return grouped
+  }, [history])
 
   const appendFiles = (fileList) => {
     const picked = Array.from(fileList).filter(
@@ -26,15 +54,38 @@ function UploadPage() {
     setFiles((prev) => [...prev, ...picked])
   }
 
+  useEffect(() => {
+    if (!isClassifying) return undefined
+    const timer = window.setInterval(() => {
+      setLoadingPhraseIndex((prev) => (prev + 1) % loadingPhrases.length)
+    }, 1200)
+    return () => window.clearInterval(timer)
+  }, [isClassifying, loadingPhrases.length])
+
   const runClassification = async () => {
     if (!canClassify) return
-    const job = await createClassificationJob(files)
-    setFiles([])
-    navigate(`/analysis/${job.id}`)
+    setIsClassifying(true)
+    setLoadingPhraseIndex(0)
+    try {
+      const job = await createClassificationJob(files)
+      setFiles([])
+      navigate(`/analysis/${job.id}`)
+    } finally {
+      setIsClassifying(false)
+    }
   }
 
   return (
     <div className="page-shell">
+      {isClassifying && (
+        <div className="classify-overlay" role="status" aria-live="polite">
+          <div className="classify-overlay-card">
+            <div className="loading-spinner" aria-hidden="true" />
+            <h3>Running Extraction</h3>
+            <p>{loadingPhrases[loadingPhraseIndex]}</p>
+          </div>
+        </div>
+      )}
       <AppHeader />
 
       <main className="workspace-main">
@@ -85,10 +136,10 @@ function UploadPage() {
             <button
               className="auth-submit classify-button"
               type="button"
-              disabled={!canClassify}
+              disabled={!canClassify || isClassifying}
               onClick={runClassification}
             >
-              Classify Files
+              {isClassifying ? 'Processing...' : 'Classify Files'}
             </button>
           </article>
 
@@ -97,15 +148,38 @@ function UploadPage() {
               <h3>Recent Runs</h3>
               <span>{history.length} total</span>
             </div>
-            {recentJobs.length === 0 && (
+            {history.length === 0 ? (
               <p className="empty-state">Your classification history will appear here.</p>
+            ) : (
+              <div className="class-group-grid">
+                {Object.entries(classGroups).map(([label, fileNames]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={expandedClass === label ? 'class-group-bubble active' : 'class-group-bubble'}
+                    onClick={() => setExpandedClass((prev) => (prev === label ? '' : label))}
+                  >
+                    <strong>{label}</strong>
+                    <span>{fileNames.length} file{fileNames.length === 1 ? '' : 's'}</span>
+                    {expandedClass === label && (
+                      <ul className="class-group-list">
+                        {fileNames.length === 0 ? (
+                          <li>No files in this class yet.</li>
+                        ) : (
+                          fileNames.map((name, idx) => <li key={`${label}-${idx}`}>{name}</li>)
+                        )}
+                      </ul>
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
-            {recentJobs.map((job) => (
-              <Link key={job.id} className="history-item" to={`/analysis/${job.id}`}>
-                <strong>{job.totalFiles} files</strong>
-                <span>{job.invoicePages} invoice page(s) extracted</span>
+            {history[0] && (
+              <Link className="history-item" to={`/analysis/${history[0].id}`}>
+                <strong>Open latest run</strong>
+                <span>View full page-by-page analysis</span>
               </Link>
-            ))}
+            )}
           </aside>
         </section>
       </main>

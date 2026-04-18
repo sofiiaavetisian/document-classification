@@ -9,6 +9,7 @@ data/interim/
 data/processed/
 outputs/
 models/
+models/layout/
 reports/figures/
 reports/tables/
 data/.DS_Store

@@ -7,11 +7,11 @@ __pycache__/
 data/raw/
 data/interim/
 data/processed/
-models/
 outputs/
+models/
 reports/figures/
 reports/tables/
-
+data/.DS_Store
 # OCR cache + logs
 data/interim/ocr/
 

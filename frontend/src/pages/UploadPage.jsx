@@ -19,14 +19,16 @@ function UploadPage() {
   const recentJobs = useMemo(() => history.slice(0, 4), [history])
 
   const appendFiles = (fileList) => {
-    const picked = Array.from(fileList).filter((file) => file.type.startsWith('image/'))
+    const picked = Array.from(fileList).filter(
+      (file) => file.type.startsWith('image/') || file.type === 'application/pdf',
+    )
     if (!picked.length) return
     setFiles((prev) => [...prev, ...picked])
   }
 
-  const runClassification = () => {
+  const runClassification = async () => {
     if (!canClassify) return
-    const job = createClassificationJob(files)
+    const job = await createClassificationJob(files)
     setFiles([])
     navigate(`/analysis/${job.id}`)
   }
@@ -63,7 +65,7 @@ function UploadPage() {
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,application/pdf"
                 onChange={(event) => appendFiles(event.target.files)}
               />
               <p>Drag and drop document images here</p>

@@ -1,0 +1,33 @@
+# Document Intelligence Backend — Python dependencies
+#
+# Pinned to versions validated in the .venv311 environment used for
+# notebooks 10b and 13. Install with:
+#
+#   pip install -r requirements.txt
+#
+# Prerequisites (system packages, not pip):
+#   macOS: brew install tesseract poppler
+#   Linux: apt install tesseract-ocr poppler-utils
+
+# ── Web framework ──────────────────────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+# ── ML — exact versions from the training environment ─────────────────────
+torch==2.11.0
+torchvision==0.26.0
+transformers==5.5.4
+
+# ── Image / document handling ──────────────────────────────────────────────
+Pillow==12.2.0
+pytesseract==0.3.13
+pymupdf==1.27.2.2
+pdf2image==1.17.0
+
+# ── Config ────────────────────────────────────────────────────────────────
+python-dotenv==1.1.0
+
+# ── Optional: AVIF support via Pillow plugin ───────────────────────────────
+# Uncomment if brew install imagemagick is not available:
+# pillow-avif-plugin==1.4.6

@@ -3,6 +3,11 @@ import { Link, useParams } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAppState } from '../context/useAppState'
 
+function showValue(value) {
+  const v = (value ?? '').toString().trim()
+  return v === '' ? '—' : v
+}
+
 function AnalysisPage() {
   const { jobId } = useParams()
   const { getJobById } = useAppState()
@@ -82,19 +87,23 @@ function AnalysisPage() {
                   <li>Predicted label: {selectedPage.label}</li>
                   <li>Confidence score: {(selectedPage.confidence * 100).toFixed(1)}%</li>
                   <li>File size: {(selectedPage.fileSize / 1024).toFixed(1)} KB</li>
+                  <li>Processing mode: {showValue(selectedPage.processingMode)}</li>
                 </ul>
+                {selectedPage.backendError && (
+                  <p className="meta-line">Backend note: {selectedPage.backendError}</p>
+                )}
               </div>
 
               <div className="detail-box">
                 <h4>Extractor Output</h4>
                 {selectedPage.extraction ? (
                   <ul className="extraction-list">
-                    <li>Invoice number: {selectedPage.extraction.invoiceNumber}</li>
-                    <li>Invoice date: {selectedPage.extraction.invoiceDate}</li>
-                    <li>Due date: {selectedPage.extraction.dueDate}</li>
-                    <li>Issuer name: {selectedPage.extraction.issuerName}</li>
-                    <li>Recipient name: {selectedPage.extraction.recipientName}</li>
-                    <li>Total amount: {selectedPage.extraction.totalAmount}</li>
+                    <li>Invoice number: {showValue(selectedPage.extraction.invoiceNumber)}</li>
+                    <li>Invoice date: {showValue(selectedPage.extraction.invoiceDate)}</li>
+                    <li>Due date: {showValue(selectedPage.extraction.dueDate)}</li>
+                    <li>Issuer name: {showValue(selectedPage.extraction.issuerName)}</li>
+                    <li>Recipient name: {showValue(selectedPage.extraction.recipientName)}</li>
+                    <li>Total amount: {showValue(selectedPage.extraction.totalAmount)}</li>
                   </ul>
                 ) : (
                   <p className="meta-line">

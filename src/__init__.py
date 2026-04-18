@@ -60,7 +60,7 @@ __all__ = [
 ]
 
 
-from .validators import (
+from .field_validators import (
     clean_ocr_text,
     validate_date,
     validate_amount,

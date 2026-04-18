@@ -3,31 +3,76 @@ import AppStateContext from './appStateContext'
 
 const STORAGE_KEY = 'docflow_state_v1'
 
-function buildInvoiceFields(index) {
-  const seed = index + 1
+// Base URL for the FastAPI backend. Update this if the backend runs on a
+// different host or port.
+const API_BASE = 'http://localhost:8000'
+
+/**
+ * Map the backend snake_case fields dict to the camelCase extraction shape
+ * expected by AnalysisPage.
+ */
+function mapFields(fields) {
+  if (!fields) return null
+  const pick = (snake, upper) => fields[snake] || fields[upper] || ''
   return {
-    invoiceNumber: `INV-20${24 + (seed % 3)}-${String(1000 + seed * 7)}`,
-    invoiceDate: `2026-0${(seed % 8) + 1}-${String((seed % 27) + 1).padStart(2, '0')}`,
-    dueDate: `2026-1${seed % 2}-${String((seed % 25) + 2).padStart(2, '0')}`,
-    issuerName: `Issuer Group ${String.fromCharCode(65 + (seed % 5))}`,
-    recipientName: `Recipient Ops ${String.fromCharCode(70 + (seed % 5))}`,
-    totalAmount: `$${(320 + seed * 48.5).toFixed(2)}`,
+    invoiceNumber: pick('invoice_number', 'INVOICE_NUMBER'),
+    invoiceDate:   pick('invoice_date',   'INVOICE_DATE'),
+    dueDate:       pick('due_date',       'DUE_DATE'),
+    issuerName:    pick('issuer_name',    'ISSUER_NAME'),
+    recipientName: pick('recipient_name', 'RECIPIENT_NAME'),
+    totalAmount:   pick('total_amount',   'TOTAL_AMOUNT'),
   }
 }
 
-function classifyFiles(files) {
-  const labels = ['invoice', 'form', 'resume', 'email', 'budget']
-  return files.map((file, index) => {
-    const label = labels[(file.name.length + index) % labels.length]
-    return {
-      fileName: file.name,
-      fileSize: file.size,
-      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
-      label,
-      confidence: 0.78 + ((index % 5) * 0.04),
-      extraction: label === 'invoice' ? buildInvoiceFields(index) : null,
+/**
+ * Call POST /predict for a single file and return a page-shaped object.
+ * Falls back to an error page shape if the request fails.
+ */
+async function classifyFile(file) {
+  const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+
+  const form = new FormData()
+  form.append('file', file)
+
+  try {
+    const res  = await fetch(`${API_BASE}/predict`, { method: 'POST', body: form })
+    const data = await res.json()
+
+    if (data.error) {
+      return {
+        fileName:   file.name,
+        fileSize:   file.size,
+        previewUrl,
+        label:      'error',
+        confidence: 0,
+        extraction: null,
+        error:      data.error,
+      }
     }
-  })
+
+    return {
+      fileName:   file.name,
+      fileSize:   file.size,
+      previewUrl,
+      label:      data.predicted_class || 'unknown',
+      confidence: data.confidence      ?? 0,
+      extraction: mapFields(data.fields),
+      processingMode: data.processing_mode || '',
+      backendError: data.error || null,
+    }
+  } catch (err) {
+    return {
+      fileName:   file.name,
+      fileSize:   file.size,
+      previewUrl,
+      label:      'error',
+      confidence: 0,
+      extraction: null,
+      error:      `Network error: ${err.message}`,
+      processingMode: '',
+      backendError: null,
+    }
+  }
 }
 
 function loadInitialState() {
@@ -62,8 +107,8 @@ function AppStateProvider({ children }) {
     persist(false, history)
   }
 
-  const createClassificationJob = (files) => {
-    const pages = classifyFiles(files)
+  const createClassificationJob = async (files) => {
+    const pages = await Promise.all(files.map((file) => classifyFile(file)))
     const invoicePages = pages.filter((page) => page.label === 'invoice').length
     const job = {
       id: `job_${Date.now()}`,

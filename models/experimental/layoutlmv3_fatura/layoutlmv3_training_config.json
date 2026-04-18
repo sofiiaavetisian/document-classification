@@ -1,0 +1,30 @@
+{
+  "base_model": "microsoft/layoutlmv3-base",
+  "num_labels": 13,
+  "labels": [
+    "O",
+    "B-INVOICE_NUMBER",
+    "I-INVOICE_NUMBER",
+    "B-INVOICE_DATE",
+    "I-INVOICE_DATE",
+    "B-DUE_DATE",
+    "I-DUE_DATE",
+    "B-ISSUER_NAME",
+    "I-ISSUER_NAME",
+    "B-RECIPIENT_NAME",
+    "I-RECIPIENT_NAME",
+    "B-TOTAL_AMOUNT",
+    "I-TOTAL_AMOUNT"
+  ],
+  "epochs_run": 5,
+  "best_epoch": 2,
+  "best_val_entity_f1": 1.0,
+  "test_entity_f1": 1.0,
+  "lr": 1e-05,
+  "weight_decay": 0.01,
+  "batch_size": 2,
+  "max_length": 512,
+  "patience": 3,
+  "training_data": "FATURA synthetic invoices (Zenodo 8261508) \u2014 layoutlm_HF_format annotations",
+  "note": "Discriminative token-classifier only; no generative AI."
+}

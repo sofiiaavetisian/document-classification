@@ -48,6 +48,7 @@ Constraints honoured
 import os
 import re
 import sys
+import threading
 import warnings
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -58,6 +59,11 @@ os.environ.setdefault('HF_HUB_DISABLE_TELEMETRY', '1')
 
 import torch
 from PIL import Image
+
+_DOCTR_PREDICTOR = None
+_DOCTR_INIT_LOCK = threading.Lock()
+_DOCTR_INFER_LOCK = threading.Lock()
+_DOCTR_UNAVAILABLE = False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -208,7 +214,58 @@ def ocr_image_tesseract(image: Image.Image) -> Tuple[List[str], List[List[int]]]
     return (words or ['empty']), (boxes or [[0, 0, 1, 1]])
 
 
-def ocr_image_doctr(image: Image.Image) -> Tuple[List[str], List[List[int]]]:
+def _get_doctr_predictor_cached():
+    """Build DocTR predictor once and reuse it for all subsequent calls."""
+    global _DOCTR_PREDICTOR, _DOCTR_UNAVAILABLE
+
+    if _DOCTR_PREDICTOR is not None:
+        return _DOCTR_PREDICTOR
+    if _DOCTR_UNAVAILABLE:
+        raise ImportError("DocTR predictor unavailable")
+
+    with _DOCTR_INIT_LOCK:
+        if _DOCTR_PREDICTOR is not None:
+            return _DOCTR_PREDICTOR
+        if _DOCTR_UNAVAILABLE:
+            raise ImportError("DocTR predictor unavailable")
+
+        try:
+            import importlib
+            from doctr.models import ocr_predictor  # type: ignore
+        except ImportError as exc:
+            _DOCTR_UNAVAILABLE = True
+            raise ImportError("python-doctr is not installed") from exc
+
+        # Avoid clashes with a stale/local module named `validators` that can
+        # break DocTR internals (expects the external package with validators.url).
+        cached_validators = sys.modules.get('validators')
+        if cached_validators is not None and not hasattr(cached_validators, 'url'):
+            del sys.modules['validators']
+        try:
+            imported_validators = importlib.import_module('validators')
+            if not hasattr(imported_validators, 'url'):
+                raise AttributeError("validators.url is unavailable")
+        except Exception as exc:
+            _DOCTR_UNAVAILABLE = True
+            raise ImportError(f"DocTR validators dependency failed: {exc!r}") from exc
+
+        _DOCTR_PREDICTOR = ocr_predictor(pretrained=True)
+        return _DOCTR_PREDICTOR
+
+
+def warmup_doctr_predictor() -> bool:
+    """
+    Attempt to initialize cached DocTR predictor at startup.
+    Returns True when ready, False when unavailable.
+    """
+    try:
+        _get_doctr_predictor_cached()
+        return True
+    except Exception:
+        return False
+
+
+def ocr_image_doctr(image: Image.Image, predictor=None) -> Tuple[List[str], List[List[int]]]:
     """
     Run DocTR OCR on a PIL image.
 
@@ -242,43 +299,32 @@ def ocr_image_doctr(image: Image.Image) -> Tuple[List[str], List[List[int]]]:
     a missing dependency.
     """
     try:
-        import importlib
         import numpy as np
-        import sys
-        from doctr.models import ocr_predictor  # type: ignore
     except ImportError:
         warnings.warn(
-            "python-doctr is not installed — falling back to Tesseract.  "
-            "Install with:  pip install python-doctr",
+            "numpy import failed in DocTR path — falling back to Tesseract.",
             RuntimeWarning,
             stacklevel=2,
         )
         return ocr_image_tesseract(image)
 
-    # Avoid clashes with a stale/local module named `validators` that can
-    # break DocTR internals (expects the external package with validators.url).
-    cached_validators = sys.modules.get('validators')
-    if cached_validators is not None and not hasattr(cached_validators, 'url'):
-        del sys.modules['validators']
-    try:
-        imported_validators = importlib.import_module('validators')
-        if not hasattr(imported_validators, 'url'):
-            raise AttributeError("validators.url is unavailable")
-    except Exception as exc:
-        warnings.warn(
-            "DocTR dependency resolution failed for package `validators` "
-            f"({exc!r}) — falling back to Tesseract.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return ocr_image_tesseract(image)
+    if predictor is None:
+        try:
+            predictor = _get_doctr_predictor_cached()
+        except Exception:
+            warnings.warn(
+                "python-doctr is not installed or unavailable — falling back to Tesseract.  "
+                "Install with:  pip install python-doctr",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return ocr_image_tesseract(image)
 
     img_array = np.array(image.convert('RGB'))
 
-    # Build the predictor once per call; for repeated calls the caller should
-    # pass a pre-built predictor to avoid repeated model instantiation.
-    predictor = ocr_predictor(pretrained=True)
-    result    = predictor([img_array])
+    # Use a lock because the shared predictor instance is reused across requests.
+    with _DOCTR_INFER_LOCK:
+        result = predictor([img_array])
 
     words: List[str]        = []
     boxes: List[List[int]]  = []

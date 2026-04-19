@@ -48,6 +48,7 @@ if _SRC_DIR not in sys.path:
 
 from invoice_cleaner import InvoiceCleaner  # noqa: E402  (must follow sys.path insert)
 from hybrid_field_extractor import HybridInvoiceFieldExtractor  # noqa: E402
+from extraction_improvements import warmup_doctr_predictor  # noqa: E402
 
 # ── Model paths ────────────────────────────────────────────────────────────
 _DIT_DIR        = _DOC_CLASS / 'models' / 'experimental' / 'dit_fatura'
@@ -124,6 +125,10 @@ class DocumentPipeline:
             max_length=_MAX_LENGTH,
         )
         print('[pipeline] HybridInvoiceFieldExtractor ready')
+        if warmup_doctr_predictor():
+            print('[pipeline] DocTR predictor warmup OK (cached)')
+        else:
+            print('[pipeline] DocTR predictor unavailable — Tesseract fallback will be used')
         print('[pipeline] InvoiceCleaner ready')
         print('[pipeline] startup complete — all models loaded')
 

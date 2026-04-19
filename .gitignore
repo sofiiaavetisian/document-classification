@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .venv/
+venv/
 
 # Generated datasets and artifacts (local-only)
 data/raw/

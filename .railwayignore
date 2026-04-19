@@ -1,0 +1,21 @@
+# Exclude local environments and heavy dev artifacts from Railway upload
+venv/
+.venv/
+.venv*/
+env/
+
+# VCS
+.git/
+
+# Notebooks and experiment outputs not needed for backend runtime
+notebooks/
+reports/
+
+# Frontend is deployed separately
+frontend/
+
+# Local caches and metadata
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.DS_Store
